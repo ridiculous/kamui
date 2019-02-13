@@ -1,6 +1,6 @@
 # Kamui
 
-Makes retrying methods and blocks super easy! There's no reason not to use `retries`! Just add `gem 'kamui'` to your Gemfile
+Makes retrying methods and blocks super easy! The Kamui gem provides a common retry structure and some options for modifying its behavior.
 
 ## Usage
 
@@ -12,15 +12,19 @@ class Example
 
   def call(*args)
     retries Net::SSH::Disconnect do
-      # do stuff ...
+      puts "do stuff ..."
     end
   end
 
   def optional_call(*args)
-    retries :call, :deadlock, args: args
+    retries :call, :network_errors, args: args, on_retry: proc { |n| sleep 2**n }
   end
 
-  retries :call, :network_errors
+  def cancel
+    puts "more stuff ..."
+  end
+
+  retries :cancel, on_retry: ->(attempts, e) { puts "Retrying #{attempts}x for #{e.class}" }
 end
 ```
 
@@ -42,7 +46,7 @@ Strategies are defined and referenced by name (Symbol). Each strategy is simply 
 Register a strategy:
 
 ```ruby
-strategy = Kamui.build(ActiveRecord::StatementInvalid, tries: 10, message: /Deadlock/, on_retry: proc { |n| sleep 1 * n })
+strategy = Kamui.build(ActiveRecord::StatementInvalid, tries: 10, message: /Deadlock/)
 Kamui.strategies.merge! deadlock: strategy
 ```
 
@@ -51,8 +55,8 @@ This creates a new retry strategy called `:deadlock` using `Kamui.build`, which 
 Use a retry strategy by passing it's name in place of the specific error class:
 
 ```ruby
-Example.retries(:call, :deadlock) {}
-Example.new.retries(:deadlock) {}
+Example.retries(:call, :deadlock) { }
+Example.new.retries(:deadlock) { }
 Example.new.retries(:call, :deadlock)
 ```
 
