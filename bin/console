@@ -11,4 +11,26 @@ require "kamui"
 # Pry.start
 
 require "irb"
+
+# example from readme
+class Example
+  include Kamui
+
+  def call(*args)
+    retries Net::SSH::Disconnect do
+      puts "do stuff ..."
+    end
+  end
+
+  def optional_call(*args)
+    retries :call, :network_errors, args: args, on_retry: proc { |n| sleep 2**n }
+  end
+
+  def cancel
+    puts "more stuff ..."
+  end
+
+  retries :cancel, on_retry: ->(attempts, e) { puts "Retrying #{attempts}x for #{e.class}" }
+end
+
 IRB.start(__FILE__)
