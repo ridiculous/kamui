@@ -3,6 +3,7 @@ require "kamui/version"
 module Kamui
   def self.included(base)
     base.include InstanceMethod
+    base.extend ClassMethod
     super
   end
 
@@ -20,12 +21,8 @@ module Kamui
   # @option :on_retry [Proc] before each retry, call this with the retry count and error, e.g. sleep 2*n (nil)
   # @option :fail [Bool] determines if error is raised after retries exhausted (true)
   # @param block [Proc] code to wrap in a retry
-  def self.retry(*errors, **options, &block)
+  def self.retries(*errors, **options, &block)
     build(errors, options).call(block)
-  end
-
-  class << self
-    alias retries retry
   end
 
   def self.build(errors, options)
@@ -67,11 +64,11 @@ module Kamui
     # @option :args [Array] arguments to pass to :method option
     def retries(*errors, args: [], **options)
       if block_given?
-        return Kamui.retry(*errors.flatten, **options) { yield }
+        return Kamui.retries(*errors.flatten, **options) { yield }
       end
       case method_name = errors.shift
       when Symbol, String
-        Kamui.retry(*errors.flatten, **options) { send(method_name, *args) }
+        Kamui.retries(*errors.flatten, **options) { send(method_name, *args) }
       else
         raise "Kamui##{__method__} expects a method as it's first argument or a block"
       end
@@ -89,7 +86,7 @@ module Kamui
     # @option :on_retry [Proc] before each retry, call this with the retry count and error, e.g. sleep 2*n (nil)
     # @option :fail [Bool] determines if error is raised after retries exhausted (true)
     def retries(method_name, *errors, **options)
-      prepend(Module.new { define_method(method_name) { |*args| Kamui.retry(*errors.flatten, **options) { super(*args) } } })
+      prepend(Module.new { define_method(method_name) { |*args| Kamui.retries(*errors.flatten, **options) { super(*args) } } })
     end
   end
 end

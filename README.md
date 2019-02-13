@@ -1,48 +1,10 @@
 # Kamui
 
-Makes retrying methods and blocks super easy. Unobtrusively add retries without over complicating the method definition. Works as an extension, mixin or function.
-
-## Installation
-
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'kamui'
-```
+Makes retrying methods and blocks super easy! There's no reason not to use `retries`! Just add `gem 'kamui'` to your Gemfile
 
 ## Usage
 
-The simplest usage is as a module function that accepts a block. If the use case allows for it, the most elegant and unobtrusive usage is as a class extension. Each variation accepts roughly the same arguments.
-
-### Function
-
-The Kamui module has a `retry` function (aliased to `retries`) which accepts a list of error classes, options and a block to retry.
-
-```ruby
-Kamui.retry(:network_errors) {}
-Kamui.retry(Net::SSH::Disconnect) {}
-Kamui.retry(ActiveRecord::StatementInvalid, message: /Deadlock/, on_retry: proc { |attempts| sleep 0.1 * attempts }) {}
-```
-
-### Extension
-
-Extending Kamui defines a `retries` class method. The class method takes a method name, errors and options. The given method name is then wrapped with retry capability.
-
-```ruby
-class Example
-  extend Kamui
-
-  def call(*args)
-    # do stuff ...
-  end
-
-  retries :call, :network_errors
-end
-```
-
-### Mixin
-
-Including Kamui defines a `retries` instance method. The method accepts either a method name or a block, along with the regular set of options.
+Simply `include Kamui` and start using `retries`!
 
 ```ruby
 class Example
@@ -55,32 +17,11 @@ class Example
   end
 
   def optional_call(*args)
-    retries :call, :network_errors, args: args
+    retries :call, :deadlock, args: args
   end
+
+  retries :call, :network_errors
 end
-```
-
-When wrapping a method with `retries` a new `:args` option is available for passing along method arguments. Wrapping a method that accepts a block isn't supported as a mixin.
-
-## Retry strategies
-
-A retry strategy is simply a proc (or anything that responds to `call`). Commonly used retry strategies (such as `:network_errors`) can be registered with Kamui and referenced later when calling `retries`.
-
-Register a strategy:
-
-```ruby
-Kamui.strategies.merge! deadlock: Kamui.build(ActiveRecord::StatementInvalid, tries: 10, message: /Deadlock/, on_retry: proc { |n| sleep 1 * n })
-```
-
-This creates a new retry strategy called `:deadlock` using `Kamui.build`, which provides the structure for a retry block (`begin...rescue`) and supports the established options.
-
-Use a retry strategy by passing it's name in place of the specific error class:
-
-```ruby
-Kamui.retries(:deadlock) {}
-Example.retries(:call, :deadlock) {}
-Example.new.retries(:deadlock) {}
-Example.new.retries(:call, :deadlock)
 ```
 
 ## Options
@@ -92,6 +33,27 @@ Kamui accepts the following set of options for modifying retry behavior:
 # :message [Regexp] scope the retry to errors with matching messages (nil)
 # :on_retry [Proc] before each retry, call this with the retry count and error, e.g. sleep 2*n (nil)
 # :fail [Bool] determines if error is raised after retries exhausted (true)
+```
+
+## Retry strategies
+
+Strategies are defined and referenced by name (Symbol). Each strategy is simply a proc (or anything that responds to `call`). Commonly used retry strategies (such as `:network_errors`) can be registered with Kamui and referenced later when calling `retries`.
+
+Register a strategy:
+
+```ruby
+strategy = Kamui.build(ActiveRecord::StatementInvalid, tries: 10, message: /Deadlock/, on_retry: proc { |n| sleep 1 * n })
+Kamui.strategies.merge! deadlock: strategy
+```
+
+This creates a new retry strategy called `:deadlock` using `Kamui.build`, which provides the structure for a retry block (`begin...rescue`) and supports the established options.
+
+Use a retry strategy by passing it's name in place of the specific error class:
+
+```ruby
+Example.retries(:call, :deadlock) {}
+Example.new.retries(:deadlock) {}
+Example.new.retries(:call, :deadlock)
 ```
 
 ## Development
