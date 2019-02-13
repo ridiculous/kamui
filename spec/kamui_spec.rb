@@ -6,7 +6,9 @@ RSpec.describe Kamui do
   let(:klass) do
     Class.new do
       include ::Kamui
-      def call(arg = nil)
+
+      def call(arg = nil, &block)
+        return block.call if block
         case arg
         when String
           arg.upcase
@@ -63,6 +65,7 @@ RSpec.describe Kamui do
     it 'wraps an instance method with retry capability' do
       expect(klass.new.call('hello')).to eq 'HELLO'
       expect(klass.new.call(-> { rand(100).even? ? raise : 'yo' })).to eq 'YO'
+      expect(klass.new.call(-> { rand(100).even? ? raise : 'yo' }) { 'nope' }).to eq 'nope'
     end
   end
 end

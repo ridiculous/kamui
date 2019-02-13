@@ -86,7 +86,9 @@ module Kamui
     # @option :on_retry [Proc] before each retry, call this with the retry count and error, e.g. sleep 2*n (nil)
     # @option :fail [Bool] determines if error is raised after retries exhausted (true)
     def retries(method_name, *errors, **options)
-      prepend(Module.new { define_method(method_name) { |*args| Kamui.retries(*errors.flatten, **options) { super(*args) } } })
+      retryable = Module.new { define_method(method_name) { |*a, &b| Kamui.retries(*errors.flatten, **options) { super(*a, &b) } } }
+      const_set :KamuiRetry, retryable unless const_defined? :KamuiRetry, false
+      prepend(retryable)
     end
   end
 end

@@ -20,8 +20,9 @@ class Example
     retries :call, :network_errors, args: args, on_retry: proc { |n| sleep 2**n }
   end
 
-  def cancel
-    puts "more stuff ..."
+  def cancel(&block)
+    puts "yielding stuff ..."
+    yield
   end
 
   retries :cancel, on_retry: ->(attempts, e) { puts "Retrying #{attempts}x for #{e.class}" }
